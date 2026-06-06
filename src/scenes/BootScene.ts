@@ -1,19 +1,6 @@
 import Phaser from 'phaser';
-import { preloadManifest, getManifest } from '@umicat/phaser-sdk';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 
-/**
- * BootScene — loads the scene-as-data manifest, then hands off to
- * GameScene with the manifest's initialScene.
- *
- * Per-scene assets are loaded lazily inside `loadWorldScene` (called
- * from GameScene), so this BootScene only loads the manifest itself.
- *
- * If the agent generates or imports image/audio assets, they are
- * declared in `scenes/manifest.json`'s `assets[]` table — NOT here.
- * The scene loader queues them via `this.load.*` on demand based on
- * which assetIds the active scene's entities reference.
- */
 export class BootScene extends Phaser.Scene {
   constructor() {
     super({ key: 'BootScene' });
@@ -21,12 +8,10 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     drawLoadingBar(this);
-    preloadManifest(this);
   }
 
   create(): void {
-    const manifest = getManifest(this);
-    this.scene.start('GameScene', { sceneId: manifest.initialScene });
+    this.scene.start('GameScene');
   }
 }
 
@@ -38,17 +23,17 @@ function drawLoadingBar(scene: Phaser.Scene): void {
 
   const label = scene.add
     .text(cx, cy - 40, 'Loading...', {
-      fontFamily: 'sans-serif',
+      fontFamily: 'monospace',
       fontSize: '20px',
-      color: '#ffffff',
+      color: '#00eaff',
     })
     .setOrigin(0.5);
 
   const track = scene.add
-    .rectangle(cx, cy, barW, barH, 0x222222)
-    .setStrokeStyle(2, 0xffffff);
+    .rectangle(cx, cy, barW, barH, 0x111122)
+    .setStrokeStyle(2, 0x00eaff);
   const fill = scene.add
-    .rectangle(cx - barW / 2 + 2, cy, 0, barH - 4, 0xffffff)
+    .rectangle(cx - barW / 2 + 2, cy, 0, barH - 4, 0x00eaff)
     .setOrigin(0, 0.5);
 
   scene.load.on('progress', (value: number) => {
