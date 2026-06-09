@@ -35,8 +35,12 @@ Buttons (blue/red/green/grey):
   /assets/kenney/sprites/ui/green/star_outline_depth.png
 Various bars, panels, sliders in sprites/ui/
 
-## Pixel Fonts
-Add to index.html <head>:
-  <style>@font-face { font-family: 'Kenney Pixel'; src: url('/assets/kenney/fonts/Kenney Pixel.ttf'); }</style>
-Then in Phaser: this.add.text(x, y, 'Score: 0', { fontFamily: 'Kenney Pixel', fontSize: '24px', color: '#ffffff' })
-Available fonts: Kenney Pixel.ttf, Kenney Future.ttf, Kenney Mini Square.ttf
+## Fonts
+Users import fonts (.ttf / .otf / .woff / .woff2) via the Assets tab. An
+imported font lands in `public/uploaded/` and is registered in
+`public/uploaded/fonts.json`; `main.ts` loads every entry (FontFace API)
+BEFORE the game boots. Use one by its filename stem as the family:
+  this.add.text(x, y, 'Score: 0', { fontFamily: 'my_font', fontSize: '24px', color: '#ffffff' })
+For a scene-as-data HUD, set the text entity's "fontFamily": "my_font".
+Do NOT add your own @font-face and do NOT gate boot yourself — main.ts handles
+loading; there is no `this.load.font()`.
