@@ -34,6 +34,25 @@
 - **SPACE / W / UP arrow / tap** — jump (hold not needed; single tap per jump)
 
 ## This Turn
+- **Hand-authored, clearable level + GD platform mechanic** (replaces the random
+  AI-generated obstacles, many of which were impossible). Two changes:
+  1. **Spikes vs platforms.** Obstacle hitboxes split into `spikes` (triangles,
+     touch = death) and `solids` (rectangles = **platforms**: you LAND on the
+     top; only running into the *side* kills). `update()` now derives its
+     support surface from the ground + any solid top the player is descending
+     onto; `hitsSolidSide()` is the only solid-lethal path. Matches Geometry
+     Dash (triangles hurt, blocks are floors).
+  2. **`LEVEL` array** (module-level): a hand-tuned repeating sequence of
+     patterns — `s` single / `d` double / `t` triple spike (multi = one jump
+     arc), `b` 50px block, `P` 150px platform — each with an `adv` spacing
+     authored for the DEFAULT physics (speed 540 → jump reach ≈383px, peak
+     ≈97px). `buildPattern()` builds them; `spawnObstacles()` walks the loop.
+  - Verified clearable by a Node sim mirroring the exact physics: a fixed
+    autopilot survives 90s/486m for any takeoff-lead 80–185px, and replaying the
+    sim's jump schedule in the real browser keeps it alive past 45m (sim ↔ Phaser
+    cross-validated). `/tmp/levelsim.mjs` is the checker — rerun it if you retune
+    spacings or physics. NOTE: spacings are tuned for speed 540; large slider
+    changes shift difficulty (jump reach ∝ speed, spacing fixed).
 - Start menu + settings UI built with **rexUI** (phaser3-rex-plugins, registered
   as the `rexUI` scene plugin in main.ts). Menu: title + START + SETTINGS rexUI
   Label-buttons (`buildMenu`); SETTINGS opens a panel (`buildSettings`) with 3

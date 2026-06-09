@@ -9,12 +9,37 @@ const GRAVITY = 1550;     // snappier arc; horizontal jump distance kept ~383px 
 const SPIKE_W = 40;
 const SPIKE_H = 40;
 
+// Jump physics (defaults): peak ≈ 97px, airtime ≈ 0.71s, horizontal reach ≈ 383px.
+// The level below is hand-authored for these numbers so every challenge clears.
+
+type Rect = { x: number; y: number; w: number; h: number };
+
 interface Obstacle {
-  type: 'spike' | 'block' | 'double_spike' | 'gap_platform';
-  x: number;
+  x: number; // left edge, world coords
   gfx: Phaser.GameObjects.Graphics;
-  hitboxes: { x: number; y: number; w: number; h: number }[];
+  spikes: Rect[]; // triangles — touch = death
+  solids: Rect[]; // rectangles — landable platforms; only a side hit kills
 }
+
+// Repeating, hand-tuned level. `k` = pattern, `adv` = distance to the next base.
+// adv ≥ ~460 so the player lands (~233px past takeoff) with reaction room before
+// the next obstacle. Multi-spike patterns sit inside ONE jump arc (≤120px span,
+// jump clears 40px-tall spikes over a ~294px window). 'b'/'P' are platforms:
+// jump ONTO them (or over) — running into the side is fatal, the top is safe.
+const LEVEL: { k: string; adv: number }[] = [
+  { k: 's', adv: 470 }, // single spike
+  { k: 's', adv: 480 },
+  { k: 'd', adv: 540 }, // double spike (one jump)
+  { k: 's', adv: 470 },
+  { k: 'b', adv: 520 }, // 50px block — jump onto or over
+  { k: 's', adv: 460 },
+  { k: 't', adv: 590 }, // triple spike (one jump)
+  { k: 's', adv: 480 },
+  { k: 'P', adv: 660 }, // wide low platform — land, ride, drop off the left
+  { k: 's', adv: 480 },
+  { k: 'd', adv: 560 },
+  { k: 'b', adv: 520 },
+];
 
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Graphics;
@@ -27,6 +52,7 @@ export class GameScene extends Phaser.Scene {
 
   private worldX = 0; // how far world has scrolled
   private nextObstacleX = 900;
+  private levelIndex = 0;
   private obstacles: Obstacle[] = [];
 
   private groundGfx!: Phaser.GameObjects.Graphics;
@@ -74,7 +100,8 @@ export class GameScene extends Phaser.Scene {
     this.deathParticles = [];
     this.trailPoints = [];
     this.playerAngle = 0;
-    this.nextObstacleX = 800;
+    this.nextObstacleX = 760; // first obstacle ~1s in — reaction room
+    this.levelIndex = 0;
 
     // Load best distance
     try {
@@ -308,59 +335,60 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnObstacles(): void {
-    // Build a set of obstacles ahead of time
-    const patterns: { type: Obstacle['type']; spacing: number }[] = [
-      { type: 'spike', spacing: 320 },
-      { type: 'spike', spacing: 280 },
-      { type: 'double_spike', spacing: 380 },
-      { type: 'block', spacing: 350 },
-      { type: 'spike', spacing: 260 },
-      { type: 'gap_platform', spacing: 420 },
-    ];
-
-    for (const p of patterns) {
-      this.spawnObstacle(this.nextObstacleX, p.type);
-      this.nextObstacleX += p.spacing + Phaser.Math.Between(20, 100);
+    // Keep the level filled ~1.5 screens ahead by walking the LEVEL loop.
+    while (this.nextObstacleX - this.worldX < GAME_WIDTH + 400) {
+      const step = LEVEL[this.levelIndex % LEVEL.length];
+      this.buildPattern(this.nextObstacleX, step.k);
+      this.nextObstacleX += step.adv;
+      this.levelIndex++;
     }
   }
 
-  private spawnObstacle(worldXPos: number, type: Obstacle['type']): void {
+  private buildPattern(baseX: number, key: string): void {
     const g = this.add.graphics().setDepth(3);
-    const hitboxes: Obstacle['hitboxes'] = [];
+    const spikes: Rect[] = [];
+    const solids: Rect[] = [];
+    // Spike hitbox is inset 4px each side of the 40px triangle so a graze near
+    // the tip/base isn't an unfair kill; the visual triangle stays full-width.
+    const spike = (lx: number) =>
+      spikes.push({ x: baseX + lx + 4, y: GROUND_Y - SPIKE_H, w: SPIKE_W - 8, h: SPIKE_H });
+    const block = (lx: number, w: number, h: number) =>
+      solids.push({ x: baseX + lx, y: GROUND_Y - h, w, h });
 
-    if (type === 'spike') {
-      hitboxes.push({ x: worldXPos + 4, y: GROUND_Y - SPIKE_H, w: SPIKE_W - 8, h: SPIKE_H });
-    } else if (type === 'double_spike') {
-      hitboxes.push({ x: worldXPos + 4, y: GROUND_Y - SPIKE_H, w: SPIKE_W - 8, h: SPIKE_H });
-      hitboxes.push({ x: worldXPos + SPIKE_W + 6, y: GROUND_Y - SPIKE_H, w: SPIKE_W - 8, h: SPIKE_H });
-    } else if (type === 'block') {
-      const bw = 55, bh = 55;
-      hitboxes.push({ x: worldXPos, y: GROUND_Y - bh, w: bw, h: bh });
-    } else if (type === 'gap_platform') {
-      // A raised platform with spikes on top
-      const bw = 80, bh = 80;
-      hitboxes.push({ x: worldXPos, y: GROUND_Y - bh, w: bw, h: bh });
-      hitboxes.push({ x: worldXPos + 8, y: GROUND_Y - bh - SPIKE_H, w: SPIKE_W - 8, h: SPIKE_H });
+    switch (key) {
+      case 's': // single spike
+        spike(0);
+        break;
+      case 'd': // two contiguous spikes — one jump clears both
+        spike(0);
+        spike(SPIKE_W);
+        break;
+      case 't': // three contiguous spikes (~120px span, still one jump)
+        spike(0);
+        spike(SPIKE_W);
+        spike(SPIKE_W * 2);
+        break;
+      case 'b': // a 50px cube — jump onto the top or over it
+        block(0, 50, 50);
+        break;
+      case 'P': // wide low platform — land on top, ride, drop off the left edge
+        block(0, 150, 46);
+        break;
     }
 
-    this.obstacles.push({ type, x: worldXPos, gfx: g, hitboxes });
+    this.obstacles.push({ x: baseX, gfx: g, spikes, solids });
   }
 
   private renderObstacle(obs: Obstacle): void {
     const g = obs.gfx;
     g.clear();
-    const sx = obs.x - this.worldX; // screen x
-
-    if (obs.type === 'spike') {
-      this.drawSpike(g, sx, GROUND_Y);
-    } else if (obs.type === 'double_spike') {
-      this.drawSpike(g, sx, GROUND_Y);
-      this.drawSpike(g, sx + SPIKE_W + 2, GROUND_Y);
-    } else if (obs.type === 'block') {
-      this.drawBlock(g, sx, GROUND_Y, 55, 55);
-    } else if (obs.type === 'gap_platform') {
-      this.drawBlock(g, sx, GROUND_Y, 80, 80);
-      this.drawSpike(g, sx + 8, GROUND_Y - 80);
+    // Platforms first (so spikes sitting on the ground draw on top).
+    for (const s of obs.solids) {
+      this.drawBlock(g, s.x - this.worldX, GROUND_Y, s.w, s.h);
+    }
+    // Spike hitbox is inset 4px; recover the visual triangle's left edge.
+    for (const hb of obs.spikes) {
+      this.drawSpike(g, hb.x - 4 - this.worldX, GROUND_Y);
     }
   }
 
@@ -508,7 +536,7 @@ export class GameScene extends Phaser.Scene {
     const ph = PLAYER_SIZE - 8;
 
     for (const obs of this.obstacles) {
-      for (const hb of obs.hitboxes) {
+      for (const hb of obs.spikes) {
         const hbScreenX = hb.x - this.worldX;
         if (
           px < hbScreenX + hb.w &&
@@ -518,6 +546,26 @@ export class GameScene extends Phaser.Scene {
         ) {
           return true;
         }
+      }
+    }
+    return false;
+  }
+
+  // A platform is fatal only from the side: the player horizontally overlaps it
+  // while their feet are below its top (i.e. they ran into the wall instead of
+  // landing on it). Landing-on-top is resolved in update() before this runs, so
+  // a clean landing has feet == top and is not flagged. Insets keep edge-grazes
+  // and exact-edge landings fair.
+  private hitsSolidSide(): boolean {
+    const left = this.playerX + 6;
+    const right = this.playerX + PLAYER_SIZE - 6;
+    const bottom = this.playerY + PLAYER_SIZE;
+    for (const obs of this.obstacles) {
+      for (const s of obs.solids) {
+        const ssx = s.x - this.worldX;
+        const horiz = right > ssx && left < ssx + s.w;
+        const intoSide = bottom > s.y + 6 && this.playerY < s.y + s.h;
+        if (horiz && intoSide) return true;
       }
     }
     return false;
@@ -587,14 +635,28 @@ export class GameScene extends Phaser.Scene {
     this.scoreText.setText(`${this.distance} m`);
     this.bestText.setText(`Best: ${this.bestDistance} m`);
 
-    // Gravity
+    // Gravity (remember where the player's feet were so we can tell a clean
+    // landing-on-top from a crash into a platform's side).
+    const prevBottom = this.playerY + PLAYER_SIZE;
     this.playerVY += this.gravity * dt;
     this.playerY += this.playerVY * dt;
 
-    // Ground collision
-    const groundPlayerY = GROUND_Y - PLAYER_SIZE;
-    if (this.playerY >= groundPlayerY) {
-      this.playerY = groundPlayerY;
+    // Support surface = the ground, plus the top of any solid platform the
+    // player is horizontally over AND was descending onto (feet at/above its
+    // top last frame). Pick the highest such surface.
+    let floorY = GROUND_Y;
+    for (const obs of this.obstacles) {
+      for (const s of obs.solids) {
+        const ssx = s.x - this.worldX;
+        const horiz = this.playerX + PLAYER_SIZE > ssx && this.playerX < ssx + s.w;
+        if (horiz && prevBottom <= s.y + 4 && s.y < floorY) {
+          floorY = s.y;
+        }
+      }
+    }
+    const floorPlayerY = floorY - PLAYER_SIZE;
+    if (this.playerY >= floorPlayerY) {
+      this.playerY = floorPlayerY;
       this.playerVY = 0;
       this.onGround = true;
     } else {
@@ -637,8 +699,9 @@ export class GameScene extends Phaser.Scene {
       return true;
     });
 
-    // Collision check
-    if (this.checkCollision()) {
+    // Collision check: spikes are lethal on touch; a platform kills only when
+    // the player runs into its side (feet below the top, not resting on it).
+    if (this.checkCollision() || this.hitsSolidSide()) {
       this.killPlayer();
       return;
     }
