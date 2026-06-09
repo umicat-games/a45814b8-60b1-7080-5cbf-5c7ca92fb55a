@@ -269,7 +269,10 @@ export class GameScene extends Phaser.Scene {
     for (const pt of this.trailPoints) {
       g.fillStyle(0x00eaff, pt.alpha * 0.5);
       const sz = hs * pt.alpha;
-      g.fillRect(pt.x - sz, pt.y - sz, sz * 2, sz * 2);
+      // pt.x is a WORLD coord — subtract the current worldX so older points
+      // streak left behind the (screen-fixed) player as the world scrolls.
+      const screenX = pt.x - this.worldX;
+      g.fillRect(screenX - sz, pt.y - sz, sz * 2, sz * 2);
     }
   }
 
@@ -500,7 +503,7 @@ export class GameScene extends Phaser.Scene {
 
     // Trail
     this.trailPoints.unshift({
-      x: this.playerX + PLAYER_SIZE / 2,
+      x: this.worldX + this.playerX + PLAYER_SIZE / 2, // WORLD coord so the trail streaks behind
       y: this.playerY + PLAYER_SIZE / 2,
       alpha: 0.7,
     });

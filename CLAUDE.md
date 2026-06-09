@@ -34,8 +34,10 @@
 - **SPACE / W / UP arrow / tap** — jump (hold not needed; single tap per jump)
 
 ## This Turn
-- Fixed start-jump: handleJump fell through to the jump after setting
-  `started=true`, so the SPACE/tap that starts the run also jumped. Added a
-  `return` after the start block — the first press only begins the run.
+- Fixed trail: trailPoints stored SCREEN x (player X is fixed at 220, world
+  scrolls), so all points piled up on the player → looked like a "shadow
+  block". Now stored in WORLD x (`worldX + playerX`) and drawn at
+  `pt.x - worldX`, so the trail streaks left behind the player as intended.
+- (prev) Fixed start-jump: added `return` after the start block in handleJump.
 - (prev) Fixed collision: `py < hb.y` → `py < hb.y + hb.h` (proper AABB).
 - (prev) Set SCROLL_SPEED to 480 px/s (1.5x the original 320)
