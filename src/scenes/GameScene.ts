@@ -3,7 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 
 const GROUND_Y = GAME_HEIGHT - 80;
 const PLAYER_SIZE = 38;
-const SCROLL_SPEED = 320; // px/s
+const SCROLL_SPEED = 640; // px/s
 const JUMP_VEL = -620;
 const GRAVITY = 1400;
 const SPIKE_W = 40;
