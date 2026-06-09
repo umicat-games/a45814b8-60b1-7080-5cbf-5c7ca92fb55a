@@ -54,6 +54,7 @@ export class GameScene extends Phaser.Scene {
   // game registry. Defaults come from the SCROLL_SPEED / JUMP_VEL constants.
   private scrollSpeed = SCROLL_SPEED;
   private jumpVel = JUMP_VEL;
+  private gravity = GRAVITY;
   private debug = false;
   private debugText?: Phaser.GameObjects.Text;
 
@@ -164,6 +165,7 @@ export class GameScene extends Phaser.Scene {
     // Debug tuning — restore live-tuned values (persisted across deaths) + HUD.
     this.scrollSpeed = (this.registry.get('dbgSpeed') as number) ?? SCROLL_SPEED;
     this.jumpVel = (this.registry.get('dbgJump') as number) ?? JUMP_VEL;
+    this.gravity = (this.registry.get('dbgGrav') as number) ?? GRAVITY;
     this.debug = (this.registry.get('dbgOn') as boolean) ?? false;
     this.debugText = this.add
       .text(8, 8, '', { fontFamily: 'monospace', fontSize: '13px', color: '#7CFC00' })
@@ -393,6 +395,15 @@ export class GameScene extends Phaser.Scene {
     kb.addKey('P').on('down', () => this.adjustSpeed(10));
     kb.addKey('K').on('down', () => this.adjustJump(10));   // less negative → lower jump
     kb.addKey('L').on('down', () => this.adjustJump(-10));  // more negative → higher jump
+    kb.addKey('N').on('down', () => this.adjustGravity(-50)); // floatier / slower fall
+    kb.addKey('M').on('down', () => this.adjustGravity(50));  // heavier / faster fall
+  }
+
+  private adjustGravity(d: number): void {
+    if (!this.debug) return;
+    this.gravity = Phaser.Math.Clamp(this.gravity + d, 800, 4000);
+    this.registry.set('dbgGrav', this.gravity);
+    this.updateDebugHud();
   }
 
   private adjustSpeed(d: number): void {
@@ -413,11 +424,12 @@ export class GameScene extends Phaser.Scene {
     if (!this.debugText) return;
     if (!this.debug) { this.debugText.setVisible(false); return; }
     const blk = (this.scrollSpeed / PLAYER_SIZE).toFixed(1);
-    const peak = ((this.jumpVel * this.jumpVel) / (2 * GRAVITY)).toFixed(0);
+    const peak = ((this.jumpVel * this.jumpVel) / (2 * this.gravity)).toFixed(0);
     this.debugText.setVisible(true).setText(
       `DEBUG (D to hide)\n` +
       `speed ${this.scrollSpeed} px/s = ${blk} blk/s   [O -] [P +]\n` +
       `jump v${Math.abs(this.jumpVel)}  peak ${peak}px   [K lower] [L higher]\n` +
+      `gravity ${this.gravity} (fall speed)   [N lighter] [M heavier]\n` +
       `GD ref blk/s: 1x=11.4  2x=13.9  3x=15.7`
     );
   }
@@ -540,7 +552,7 @@ export class GameScene extends Phaser.Scene {
     this.bestText.setText(`Best: ${this.bestDistance} m`);
 
     // Gravity
-    this.playerVY += GRAVITY * dt;
+    this.playerVY += this.gravity * dt;
     this.playerY += this.playerVY * dt;
 
     // Ground collision
