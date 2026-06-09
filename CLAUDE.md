@@ -28,10 +28,10 @@
 - All rendering via Phaser Graphics API cleared + redrawn each frame
 - Obstacle system: worldX-based positions, screen positions computed as `obs.x - this.worldX`
 - Obstacle spawning: batches of 6 patterns, re-triggered when next batch is < GAME_WIDTH+200px ahead
-- Constants: SCROLL_SPEED=640, JUMP_VEL=-620, GRAVITY=1400, PLAYER_SIZE=38, GROUND_Y=GAME_HEIGHT-80
+- Constants: SCROLL_SPEED=480, JUMP_VEL=-620, GRAVITY=1400, PLAYER_SIZE=38, GROUND_Y=GAME_HEIGHT-80
 
 ## Controls
 - **SPACE / W / UP arrow / tap** — jump (hold not needed; single tap per jump)
 
 ## This Turn
-- Doubled SCROLL_SPEED from 320 to 640 px/s for 2x faster gameplay
+- Set SCROLL_SPEED to 480 px/s (1.5x the original 320) — 2x (640) was too fast
