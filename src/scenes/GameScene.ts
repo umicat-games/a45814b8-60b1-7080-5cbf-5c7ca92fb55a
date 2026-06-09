@@ -3,9 +3,9 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 
 const GROUND_Y = GAME_HEIGHT - 80;
 const PLAYER_SIZE = 38;
-const SCROLL_SPEED = 480; // px/s
-const JUMP_VEL = -620;
-const GRAVITY = 1400;
+const SCROLL_SPEED = 540; // px/s
+const JUMP_VEL = -550;    // lower jump (~98px peak ≈ 2.6 player heights) — more Geometry-Dash-like
+const GRAVITY = 1550;     // snappier arc; horizontal jump distance kept ~383px so obstacles still clear
 const SPIKE_W = 40;
 const SPIKE_H = 40;
 

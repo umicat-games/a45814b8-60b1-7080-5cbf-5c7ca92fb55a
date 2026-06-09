@@ -34,7 +34,11 @@
 - **SPACE / W / UP arrow / tap** — jump (hold not needed; single tap per jump)
 
 ## This Turn
-- Fixed trail (2 parts): (a) stored WORLD x (`worldX + playerX`), drawn at
+- Tuned feel toward Geometry Dash: SCROLL_SPEED 480→540, JUMP_VEL -620→-550,
+  GRAVITY 1400→1550. Jump peak 137→98px (3.6→2.6 player heights), snappier
+  arc; horizontal jump distance kept ~383px (was 425) so obstacles still
+  clear. Playtest clearability — re-tune jump/spacing if some don't clear.
+- (prev) Fixed trail (2 parts): (a) stored WORLD x (`worldX + playerX`), drawn at
   `pt.x - worldX`, so it streaks left instead of piling on the screen-fixed
   player ("shadow block"); (b) made it visible during play — length 8→18,
   fade 0.85→0.9, draw alpha 0.5→0.6, gentler size shrink — the bright near
