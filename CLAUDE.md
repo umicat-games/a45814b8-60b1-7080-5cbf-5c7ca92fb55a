@@ -34,4 +34,8 @@
 - **SPACE / W / UP arrow / tap** — jump (hold not needed; single tap per jump)
 
 ## This Turn
-- Set SCROLL_SPEED to 480 px/s (1.5x the original 320) — 2x (640) was too fast
+- Fixed collision: checkCollision's vertical test was `py < hb.y` (only fired
+  when the player straddled an obstacle's TOP edge) — corrected to
+  `py < hb.y + hb.h` so it's a proper AABB overlap against the full hitbox
+  height. Before, the player passed through the lower part of spikes/blocks.
+- (prev) Set SCROLL_SPEED to 480 px/s (1.5x the original 320)

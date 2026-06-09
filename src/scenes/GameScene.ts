@@ -400,7 +400,7 @@ export class GameScene extends Phaser.Scene {
         if (
           px < hbScreenX + hb.w &&
           px + pw > hbScreenX &&
-          py < hb.y &&
+          py < hb.y + hb.h &&
           py + ph > hb.y
         ) {
           return true;
