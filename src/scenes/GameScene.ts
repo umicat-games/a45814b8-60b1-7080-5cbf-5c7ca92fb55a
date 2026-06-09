@@ -50,6 +50,13 @@ export class GameScene extends Phaser.Scene {
 
   private playerAngle = 0;
 
+  // Live-tunable (debug): adjustable in-game + persisted across deaths via the
+  // game registry. Defaults come from the SCROLL_SPEED / JUMP_VEL constants.
+  private scrollSpeed = SCROLL_SPEED;
+  private jumpVel = JUMP_VEL;
+  private debug = false;
+  private debugText?: Phaser.GameObjects.Text;
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -153,6 +160,16 @@ export class GameScene extends Phaser.Scene {
     this.jumpKey.on('down', () => this.handleJump());
     this.wKey.on('down', () => this.handleJump());
     this.input.keyboard!.on('keydown-UP', () => this.handleJump());
+
+    // Debug tuning — restore live-tuned values (persisted across deaths) + HUD.
+    this.scrollSpeed = (this.registry.get('dbgSpeed') as number) ?? SCROLL_SPEED;
+    this.jumpVel = (this.registry.get('dbgJump') as number) ?? JUMP_VEL;
+    this.debug = (this.registry.get('dbgOn') as boolean) ?? false;
+    this.debugText = this.add
+      .text(8, 8, '', { fontFamily: 'monospace', fontSize: '13px', color: '#7CFC00' })
+      .setDepth(15);
+    this.setupDebugKeys();
+    this.updateDebugHud();
 
     // Spawn initial safe ground section
     this.spawnObstacles();
@@ -361,6 +378,50 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // ── Debug tuning (press D) ───────────────────────────────────────────────
+  // O/P adjust speed, K/L adjust jump height. Values persist across deaths via
+  // the game registry. HUD shows px/s + blocks/sec (1 block = PLAYER_SIZE) so
+  // you can match real Geometry Dash speeds (1x≈11.4, 2x≈13.9 blk/s).
+  private setupDebugKeys(): void {
+    const kb = this.input.keyboard!;
+    kb.addKey('D').on('down', () => {
+      this.debug = !this.debug;
+      this.registry.set('dbgOn', this.debug);
+      this.updateDebugHud();
+    });
+    kb.addKey('O').on('down', () => this.adjustSpeed(-10));
+    kb.addKey('P').on('down', () => this.adjustSpeed(10));
+    kb.addKey('K').on('down', () => this.adjustJump(10));   // less negative → lower jump
+    kb.addKey('L').on('down', () => this.adjustJump(-10));  // more negative → higher jump
+  }
+
+  private adjustSpeed(d: number): void {
+    if (!this.debug) return;
+    this.scrollSpeed = Phaser.Math.Clamp(this.scrollSpeed + d, 100, 1500);
+    this.registry.set('dbgSpeed', this.scrollSpeed);
+    this.updateDebugHud();
+  }
+
+  private adjustJump(d: number): void {
+    if (!this.debug) return;
+    this.jumpVel = Phaser.Math.Clamp(this.jumpVel + d, -1000, -200);
+    this.registry.set('dbgJump', this.jumpVel);
+    this.updateDebugHud();
+  }
+
+  private updateDebugHud(): void {
+    if (!this.debugText) return;
+    if (!this.debug) { this.debugText.setVisible(false); return; }
+    const blk = (this.scrollSpeed / PLAYER_SIZE).toFixed(1);
+    const peak = ((this.jumpVel * this.jumpVel) / (2 * GRAVITY)).toFixed(0);
+    this.debugText.setVisible(true).setText(
+      `DEBUG (D to hide)\n` +
+      `speed ${this.scrollSpeed} px/s = ${blk} blk/s   [O -] [P +]\n` +
+      `jump v${Math.abs(this.jumpVel)}  peak ${peak}px   [K lower] [L higher]\n` +
+      `GD ref blk/s: 1x=11.4  2x=13.9  3x=15.7`
+    );
+  }
+
   private handleJump(): void {
     if (!this.started) {
       this.started = true;
@@ -378,7 +439,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.onGround) {
-      this.playerVY = JUMP_VEL;
+      this.playerVY = this.jumpVel;
       this.onGround = false;
 
       // Jump flash
@@ -473,7 +534,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Scroll world
-    this.worldX += SCROLL_SPEED * dt;
+    this.worldX += this.scrollSpeed * dt;
     this.distance = Math.floor(this.worldX / 100);
     this.scoreText.setText(`${this.distance} m`);
     this.bestText.setText(`Best: ${this.bestDistance} m`);

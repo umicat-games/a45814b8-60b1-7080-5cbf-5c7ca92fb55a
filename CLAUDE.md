@@ -34,7 +34,11 @@
 - **SPACE / W / UP arrow / tap** — jump (hold not needed; single tap per jump)
 
 ## This Turn
-- Tuned feel toward Geometry Dash: SCROLL_SPEED 480→540, JUMP_VEL -620→-550,
+- Added debug tuning: press **D** to toggle a HUD; **O/P** adjust speed, **K/L**
+  adjust jump height. Values persist across deaths (game registry). HUD shows
+  px/s + blocks/sec (1 block = PLAYER_SIZE 38px) vs GD reference speeds.
+  `scrollSpeed`/`jumpVel` are now instance fields (default from the constants).
+- (prev) Tuned feel toward Geometry Dash: SCROLL_SPEED 480→540, JUMP_VEL -620→-550,
   GRAVITY 1400→1550. Jump peak 137→98px (3.6→2.6 player heights), snappier
   arc; horizontal jump distance kept ~383px (was 425) so obstacles still
   clear. Playtest clearability — re-tune jump/spacing if some don't clear.
