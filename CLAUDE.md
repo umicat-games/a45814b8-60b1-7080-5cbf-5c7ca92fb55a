@@ -34,11 +34,14 @@
 - **SPACE / W / UP arrow / tap** — jump (hold not needed; single tap per jump)
 
 ## This Turn
-- Added debug tuning: press **D** to toggle a HUD; **O/P** speed, **K/L** jump
-  height, **N/M** gravity (fall speed). Values persist across deaths (game
-  registry). HUD shows px/s + blocks/sec (1 block = PLAYER_SIZE 38px) + peak +
-  gravity, vs GD reference speeds. `scrollSpeed`/`jumpVel`/`gravity` are now
-  instance fields (defaults from the constants).
+- Start menu + settings UI (replaces the keyboard debug HUD): the menu has a
+  title + **START** + **SETTINGS** buttons (`buildMenu`); SETTINGS opens a
+  modal (`buildSettings`) with 3 draggable sliders — Speed (300–800 px/s, shows
+  blk/s), Jump (350–800, shows peak px), Fall speed/gravity (1000–3000) — + a
+  BACK button. Helpers: `makeButton`, `makeSlider`. `scrollSpeed`/`jumpVel`/
+  `gravity` are live instance fields, persisted across deaths (game registry).
+  Raw pointerdown only jumps/retries while playing/dead so menu button clicks
+  don't also start the run; SPACE/W/UP still start from the menu.
 - (prev) Tuned feel toward Geometry Dash: SCROLL_SPEED 480→540, JUMP_VEL -620→-550,
   GRAVITY 1400→1550. Jump peak 137→98px (3.6→2.6 player heights), snappier
   arc; horizontal jump distance kept ~383px (was 425) so obstacles still

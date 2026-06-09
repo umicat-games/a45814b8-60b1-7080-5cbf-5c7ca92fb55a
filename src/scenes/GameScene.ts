@@ -39,7 +39,6 @@ export class GameScene extends Phaser.Scene {
   private bestDistance = 0;
   private bestText!: Phaser.GameObjects.Text;
 
-  private promptText!: Phaser.GameObjects.Text;
   private deathOverlay!: Phaser.GameObjects.Container;
 
   private jumpKey!: Phaser.Input.Keyboard.Key;
@@ -55,8 +54,9 @@ export class GameScene extends Phaser.Scene {
   private scrollSpeed = SCROLL_SPEED;
   private jumpVel = JUMP_VEL;
   private gravity = GRAVITY;
-  private debug = false;
-  private debugText?: Phaser.GameObjects.Text;
+  private menuContainer?: Phaser.GameObjects.Container;
+  private settingsContainer?: Phaser.GameObjects.Container;
+  private settingsRefreshers: (() => void)[] = [];
 
   constructor() {
     super({ key: 'GameScene' });
@@ -117,24 +117,8 @@ export class GameScene extends Phaser.Scene {
       strokeThickness: 3,
     }).setOrigin(0.5, 0).setDepth(10);
 
-    // Prompt
-    this.promptText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60,
-      'PRESS SPACE OR TAP TO START', {
-        fontFamily: 'monospace',
-        fontSize: '28px',
-        color: '#ffdd00',
-        stroke: '#000000',
-        strokeThickness: 5,
-      }).setOrigin(0.5).setDepth(10);
-
-    // Title
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 120, 'GEOMETRY RUSH', {
-      fontFamily: 'monospace',
-      fontSize: '48px',
-      color: '#00eaff',
-      stroke: '#003366',
-      strokeThickness: 8,
-    }).setOrigin(0.5).setDepth(10);
+    // Start menu (title + START + SETTINGS) and the settings slider panel are
+    // built in buildSettings()/buildMenu() below.
 
     // Death overlay (hidden)
     this.deathOverlay = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(20).setAlpha(0);
@@ -157,21 +141,21 @@ export class GameScene extends Phaser.Scene {
     this.wKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
 
-    this.input.on('pointerdown', () => this.handleJump());
+    // Raw screen taps only jump/retry while playing or dead — on the menu the
+    // START/SETTINGS buttons handle their own clicks (so a button tap doesn't
+    // also start the run). SPACE/W/UP still start from the menu (keyboard).
+    this.input.on('pointerdown', () => { if (this.started || this.dead) this.handleJump(); });
     this.jumpKey.on('down', () => this.handleJump());
     this.wKey.on('down', () => this.handleJump());
     this.input.keyboard!.on('keydown-UP', () => this.handleJump());
 
-    // Debug tuning — restore live-tuned values (persisted across deaths) + HUD.
+    // Restore tuned values (persisted across deaths via the game registry),
+    // then build the start menu + settings slider panel.
     this.scrollSpeed = (this.registry.get('dbgSpeed') as number) ?? SCROLL_SPEED;
     this.jumpVel = (this.registry.get('dbgJump') as number) ?? JUMP_VEL;
     this.gravity = (this.registry.get('dbgGrav') as number) ?? GRAVITY;
-    this.debug = (this.registry.get('dbgOn') as boolean) ?? false;
-    this.debugText = this.add
-      .text(8, 8, '', { fontFamily: 'monospace', fontSize: '13px', color: '#7CFC00' })
-      .setDepth(15);
-    this.setupDebugKeys();
-    this.updateDebugHud();
+    this.buildSettings();
+    this.buildMenu();
 
     // Spawn initial safe ground section
     this.spawnObstacles();
@@ -380,69 +364,130 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // ── Debug tuning (press D) ───────────────────────────────────────────────
-  // O/P adjust speed, K/L adjust jump height. Values persist across deaths via
-  // the game registry. HUD shows px/s + blocks/sec (1 block = PLAYER_SIZE) so
-  // you can match real Geometry Dash speeds (1x≈11.4, 2x≈13.9 blk/s).
-  private setupDebugKeys(): void {
-    const kb = this.input.keyboard!;
-    kb.addKey('D').on('down', () => {
-      this.debug = !this.debug;
-      this.registry.set('dbgOn', this.debug);
-      this.updateDebugHud();
+  // ── Start menu + settings UI ─────────────────────────────────────────────
+  private startRun(): void {
+    if (this.started) return;
+    this.started = true;
+    this.menuContainer?.setVisible(false);
+    this.settingsContainer?.setVisible(false);
+  }
+
+  /** Rounded-rect button with hover. Returns a container (add it to a parent). */
+  private makeButton(
+    x: number, y: number, w: number, h: number, label: string, color: number, onClick: () => void,
+  ): Phaser.GameObjects.Container {
+    const c = this.add.container(x, y);
+    const g = this.add.graphics();
+    const draw = (hover: boolean) => {
+      g.clear();
+      g.fillStyle(color, hover ? 1 : 0.85);
+      g.fillRoundedRect(-w / 2, -h / 2, w, h, 12);
+      g.lineStyle(3, 0xffffff, hover ? 0.95 : 0.5);
+      g.strokeRoundedRect(-w / 2, -h / 2, w, h, 12);
+    };
+    draw(false);
+    const t = this.add.text(0, 0, label, {
+      fontFamily: 'monospace', fontSize: '22px', color: '#ffffff', stroke: '#000', strokeThickness: 4,
+    }).setOrigin(0.5);
+    c.add([g, t]);
+    c.setSize(w, h);
+    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
+    if (c.input) c.input.cursor = 'pointer';
+    c.on('pointerover', () => draw(true));
+    c.on('pointerout', () => draw(false));
+    c.on('pointerdown', onClick);
+    return c;
+  }
+
+  /**
+   * Draggable slider added to `parent`. get/set read/write the live value;
+   * fmt renders the label. Returns a refresh fn (re-reads value → repositions
+   * handle + relabels) so other sliders can update when a shared input changes.
+   */
+  private makeSlider(
+    parent: Phaser.GameObjects.Container, x: number, y: number, w: number,
+    min: number, max: number, get: () => number, set: (v: number) => void, fmt: (v: number) => string,
+  ): () => void {
+    const trackG = this.add.graphics();
+    trackG.fillStyle(0x22324f, 1);
+    trackG.fillRoundedRect(x, y - 4, w, 8, 4);
+    const label = this.add.text(x, y - 26, '', {
+      fontFamily: 'monospace', fontSize: '16px', color: '#cfe8ff',
+    }).setOrigin(0, 0.5);
+    const handle = this.add.circle(x, y, 11, 0x00eaff).setStrokeStyle(2, 0xffffff);
+    const refresh = () => {
+      const t = Phaser.Math.Clamp((get() - min) / (max - min), 0, 1);
+      handle.x = x + t * w;
+      label.setText(fmt(get()));
+    };
+    handle.setInteractive({ draggable: true, useHandCursor: true });
+    handle.on('drag', (_p: Phaser.Input.Pointer, dragX: number) => {
+      const t = Phaser.Math.Clamp((dragX - x) / w, 0, 1);
+      set(min + t * (max - min));
+      this.refreshSettings();
     });
-    kb.addKey('O').on('down', () => this.adjustSpeed(-10));
-    kb.addKey('P').on('down', () => this.adjustSpeed(10));
-    kb.addKey('K').on('down', () => this.adjustJump(10));   // less negative → lower jump
-    kb.addKey('L').on('down', () => this.adjustJump(-10));  // more negative → higher jump
-    kb.addKey('N').on('down', () => this.adjustGravity(-50)); // floatier / slower fall
-    kb.addKey('M').on('down', () => this.adjustGravity(50));  // heavier / faster fall
+    parent.add([trackG, label, handle]);
+    refresh();
+    return refresh;
   }
 
-  private adjustGravity(d: number): void {
-    if (!this.debug) return;
-    this.gravity = Phaser.Math.Clamp(this.gravity + d, 800, 4000);
-    this.registry.set('dbgGrav', this.gravity);
-    this.updateDebugHud();
+  private refreshSettings(): void {
+    this.settingsRefreshers.forEach((r) => r());
   }
 
-  private adjustSpeed(d: number): void {
-    if (!this.debug) return;
-    this.scrollSpeed = Phaser.Math.Clamp(this.scrollSpeed + d, 100, 1500);
-    this.registry.set('dbgSpeed', this.scrollSpeed);
-    this.updateDebugHud();
+  private buildMenu(): void {
+    const cx = GAME_WIDTH / 2, cy = GAME_HEIGHT / 2;
+    const c = this.add.container(0, 0).setDepth(12);
+    this.menuContainer = c;
+    const title = this.add.text(cx, cy - 120, 'GEOMETRY RUSH', {
+      fontFamily: 'monospace', fontSize: '48px', color: '#00eaff', stroke: '#003366', strokeThickness: 8,
+    }).setOrigin(0.5);
+    const start = this.makeButton(cx, cy - 16, 240, 64, 'START', 0x00aa66, () => this.startRun());
+    const settings = this.makeButton(cx, cy + 70, 240, 50, 'SETTINGS', 0x444a6e,
+      () => this.settingsContainer?.setVisible(true));
+    c.add([title, start, settings]);
   }
 
-  private adjustJump(d: number): void {
-    if (!this.debug) return;
-    this.jumpVel = Phaser.Math.Clamp(this.jumpVel + d, -1000, -200);
-    this.registry.set('dbgJump', this.jumpVel);
-    this.updateDebugHud();
-  }
-
-  private updateDebugHud(): void {
-    if (!this.debugText) return;
-    if (!this.debug) { this.debugText.setVisible(false); return; }
-    const blk = (this.scrollSpeed / PLAYER_SIZE).toFixed(1);
-    const peak = ((this.jumpVel * this.jumpVel) / (2 * this.gravity)).toFixed(0);
-    this.debugText.setVisible(true).setText(
-      `DEBUG (D to hide)\n` +
-      `speed ${this.scrollSpeed} px/s = ${blk} blk/s   [O -] [P +]\n` +
-      `jump v${Math.abs(this.jumpVel)}  peak ${peak}px   [K lower] [L higher]\n` +
-      `gravity ${this.gravity} (fall speed)   [N lighter] [M heavier]\n` +
-      `GD ref blk/s: 1x=11.4  2x=13.9  3x=15.7`
-    );
+  private buildSettings(): void {
+    const cx = GAME_WIDTH / 2, cy = GAME_HEIGHT / 2;
+    const pw = 580, ph = 400;
+    const c = this.add.container(0, 0).setDepth(25).setVisible(false);
+    this.settingsContainer = c;
+    const backdrop = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.6)
+      .setOrigin(0, 0).setInteractive(); // swallow clicks behind the panel
+    const pg = this.add.graphics();
+    pg.fillStyle(0x12203a, 0.98); pg.fillRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, 18);
+    pg.lineStyle(3, 0x00eaff, 0.8); pg.strokeRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, 18);
+    const title = this.add.text(cx, cy - ph / 2 + 30, 'SETTINGS', {
+      fontFamily: 'monospace', fontSize: '28px', color: '#00eaff', stroke: '#000', strokeThickness: 4,
+    }).setOrigin(0.5);
+    const hint = this.add.text(cx, cy - ph / 2 + 62, 'GD ref: 1x=11.4  2x=13.9  3x=15.7 blk/s', {
+      fontFamily: 'monospace', fontSize: '13px', color: '#88aacc',
+    }).setOrigin(0.5);
+    c.add([backdrop, pg, title, hint]);
+    const sx = cx - 180, sw = 360;
+    const r1 = this.makeSlider(c, sx, cy - 40, sw, 300, 800,
+      () => this.scrollSpeed,
+      (v) => { this.scrollSpeed = Math.round(v); this.registry.set('dbgSpeed', this.scrollSpeed); },
+      (v) => `Speed:  ${Math.round(v)} px/s  (${(v / PLAYER_SIZE).toFixed(1)} blk/s)`);
+    const r2 = this.makeSlider(c, sx, cy + 30, sw, 350, 800,
+      () => -this.jumpVel,
+      (v) => { this.jumpVel = -Math.round(v); this.registry.set('dbgJump', this.jumpVel); },
+      (v) => `Jump:  peak ${Math.round((v * v) / (2 * this.gravity))}px`);
+    const r3 = this.makeSlider(c, sx, cy + 100, sw, 1000, 3000,
+      () => this.gravity,
+      (v) => { this.gravity = Math.round(v); this.registry.set('dbgGrav', this.gravity); },
+      (v) => `Fall speed (gravity):  ${Math.round(v)}`);
+    this.settingsRefreshers = [r1, r2, r3];
+    const back = this.makeButton(cx, cy + ph / 2 - 34, 150, 46, 'BACK', 0x2244aa,
+      () => c.setVisible(false));
+    c.add(back);
   }
 
   private handleJump(): void {
     if (!this.started) {
-      this.started = true;
-      this.promptText.setVisible(false);
-      // Hide title text
-      this.children.list
-        .filter(c => c instanceof Phaser.GameObjects.Text && (c as Phaser.GameObjects.Text).text === 'GEOMETRY RUSH')
-        .forEach(c => c.destroy());
-      return; // the start press only begins the run — don't also jump
+      this.startRun(); // begin the run (also reachable via the START button)
+      return;          // the start press only begins the run — don't also jump
     }
 
     if (this.dead) {
