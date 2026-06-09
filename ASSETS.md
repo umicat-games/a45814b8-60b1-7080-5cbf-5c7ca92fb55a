@@ -44,3 +44,14 @@ BEFORE the game boots. Use one by its filename stem as the family:
 For a scene-as-data HUD, set the text entity's "fontFamily": "my_font".
 Do NOT add your own @font-face and do NOT gate boot yourself — main.ts handles
 loading; there is no `this.load.font()`.
+
+## Web fonts (Google Fonts)
+For a font the user did NOT upload, use any Google Fonts family without an
+upload: add its EXACT family name to `public/webfonts.json` (a JSON array;
+create the file if it doesn't exist), then use it as `fontFamily: '<Family>'`.
+  public/webfonts.json:  ["Bangers", "Press Start 2P"]
+  this.add.text(x, y, 'BOOM', { fontFamily: 'Bangers', fontSize: '40px', color: '#fff' })
+main.ts injects the Google Fonts stylesheet and loads each family BEFORE boot.
+Same rules: no <link> tags, no @font-face, no boot gate of your own. Pick real
+Google Fonts names; a typo just falls back to the system font. Runtime needs
+network (fonts.gstatic.com); prefer an uploaded font when offline matters.
