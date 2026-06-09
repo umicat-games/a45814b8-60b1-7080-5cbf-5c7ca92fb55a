@@ -267,8 +267,8 @@ export class GameScene extends Phaser.Scene {
     g.clear();
     const hs = PLAYER_SIZE / 2;
     for (const pt of this.trailPoints) {
-      g.fillStyle(0x00eaff, pt.alpha * 0.5);
-      const sz = hs * pt.alpha;
+      g.fillStyle(0x00eaff, pt.alpha * 0.6);
+      const sz = hs * (0.4 + 0.6 * pt.alpha); // gentler shrink so far points aren't tiny specks
       // pt.x is a WORLD coord — subtract the current worldX so older points
       // streak left behind the (screen-fixed) player as the world scrolls.
       const screenX = pt.x - this.worldX;
@@ -507,8 +507,12 @@ export class GameScene extends Phaser.Scene {
       y: this.playerY + PLAYER_SIZE / 2,
       alpha: 0.7,
     });
-    if (this.trailPoints.length > 8) this.trailPoints.pop();
-    for (const pt of this.trailPoints) pt.alpha *= 0.85;
+    // Longer + slower-fading so the streak clearly extends LEFT past the
+    // player block (the brightest points sit under the player and are hidden;
+    // a short fast-fading tail was only visible at game-over when the player
+    // turns invisible).
+    if (this.trailPoints.length > 18) this.trailPoints.pop();
+    for (const pt of this.trailPoints) pt.alpha *= 0.9;
 
     // Spawn more obstacles if needed
     if (this.nextObstacleX - this.worldX < GAME_WIDTH + 200) {

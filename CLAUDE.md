@@ -34,10 +34,12 @@
 - **SPACE / W / UP arrow / tap** — jump (hold not needed; single tap per jump)
 
 ## This Turn
-- Fixed trail: trailPoints stored SCREEN x (player X is fixed at 220, world
-  scrolls), so all points piled up on the player → looked like a "shadow
-  block". Now stored in WORLD x (`worldX + playerX`) and drawn at
-  `pt.x - worldX`, so the trail streaks left behind the player as intended.
+- Fixed trail (2 parts): (a) stored WORLD x (`worldX + playerX`), drawn at
+  `pt.x - worldX`, so it streaks left instead of piling on the screen-fixed
+  player ("shadow block"); (b) made it visible during play — length 8→18,
+  fade 0.85→0.9, draw alpha 0.5→0.6, gentler size shrink — the bright near
+  points sit under the player block, so a short faint tail was only visible
+  at game-over (player turns invisible).
 - (prev) Fixed start-jump: added `return` after the start block in handleJump.
 - (prev) Fixed collision: `py < hb.y` → `py < hb.y + hb.h` (proper AABB).
 - (prev) Set SCROLL_SPEED to 480 px/s (1.5x the original 320)
