@@ -34,14 +34,17 @@
 - **SPACE / W / UP arrow / tap** — jump (hold not needed; single tap per jump)
 
 ## This Turn
-- Start menu + settings UI (replaces the keyboard debug HUD): the menu has a
-  title + **START** + **SETTINGS** buttons (`buildMenu`); SETTINGS opens a
-  modal (`buildSettings`) with 3 draggable sliders — Speed (300–800 px/s, shows
-  blk/s), Jump (350–800, shows peak px), Fall speed/gravity (1000–3000) — + a
-  BACK button. Helpers: `makeButton`, `makeSlider`. `scrollSpeed`/`jumpVel`/
-  `gravity` are live instance fields, persisted across deaths (game registry).
-  Raw pointerdown only jumps/retries while playing/dead so menu button clicks
-  don't also start the run; SPACE/W/UP still start from the menu.
+- Start menu + settings UI built with **rexUI** (phaser3-rex-plugins, registered
+  as the `rexUI` scene plugin in main.ts). Menu: title + START + SETTINGS rexUI
+  Label-buttons (`buildMenu`); SETTINGS opens a panel (`buildSettings`) with 3
+  rexUI sliders — Speed (300–800 px/s, shows blk/s), Jump (350–800, peak px),
+  Fall speed/gravity (1000–3000) — + a BACK button. `makeButton`=rexUI label,
+  `makeSlider`=rexUI slider. Show/hide via `menuObjects`/`settingsObjects`
+  arrays (NOT plain containers — keeps rexUI input reliable). `scrollSpeed`/
+  `jumpVel`/`gravity` are live instance fields persisted across deaths (game
+  registry). Raw pointerdown only jumps/retries while playing/dead; SPACE/W/UP
+  still start. (Replaced the earlier hand-rolled Graphics+Zone UI — rexUI is the
+  platform's intended path and fixes the button hit-area issues.)
 - (prev) Tuned feel toward Geometry Dash: SCROLL_SPEED 480→540, JUMP_VEL -620→-550,
   GRAVITY 1400→1550. Jump peak 137→98px (3.6→2.6 player heights), snappier
   arc; horizontal jump distance kept ~383px (was 425) so obstacles still

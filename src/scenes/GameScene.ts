@@ -54,8 +54,8 @@ export class GameScene extends Phaser.Scene {
   private scrollSpeed = SCROLL_SPEED;
   private jumpVel = JUMP_VEL;
   private gravity = GRAVITY;
-  private menuContainer?: Phaser.GameObjects.Container;
-  private settingsContainer?: Phaser.GameObjects.Container;
+  private menuObjects: Phaser.GameObjects.GameObject[] = [];
+  private settingsObjects: Phaser.GameObjects.GameObject[] = [];
   private settingsRefreshers: (() => void)[] = [];
 
   constructor() {
@@ -364,71 +364,64 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // ── Start menu + settings UI ─────────────────────────────────────────────
+  // ── Start menu + settings UI (rexUI) ─────────────────────────────────────
+  private get rex(): any {
+    return (this as unknown as { rexUI: any }).rexUI;
+  }
+
   private startRun(): void {
     if (this.started) return;
     this.started = true;
-    this.menuContainer?.setVisible(false);
-    this.settingsContainer?.setVisible(false);
+    this.menuObjects.forEach((o) => (o as Phaser.GameObjects.Components.Visible).setVisible(false));
+    this.closeSettings();
   }
 
-  /** Rounded-rect button with hover. Returns a container (add it to a parent). */
+  private openSettings(): void {
+    this.settingsObjects.forEach((o) => (o as Phaser.GameObjects.Components.Visible).setVisible(true));
+  }
+
+  private closeSettings(): void {
+    this.settingsObjects.forEach((o) => (o as Phaser.GameObjects.Components.Visible).setVisible(false));
+  }
+
+  /** rexUI Label button (whole area clickable) with hover. */
   private makeButton(
     x: number, y: number, w: number, h: number, label: string, color: number, onClick: () => void,
-  ): Phaser.GameObjects.Container {
-    const c = this.add.container(x, y);
-    const g = this.add.graphics();
-    const draw = (hover: boolean) => {
-      g.clear();
-      g.fillStyle(color, hover ? 1 : 0.85);
-      g.fillRoundedRect(-w / 2, -h / 2, w, h, 12);
-      g.lineStyle(3, 0xffffff, hover ? 0.95 : 0.5);
-      g.strokeRoundedRect(-w / 2, -h / 2, w, h, 12);
-    };
-    draw(false);
-    const t = this.add.text(0, 0, label, {
-      fontFamily: 'monospace', fontSize: '22px', color: '#ffffff', stroke: '#000', strokeThickness: 4,
-    }).setOrigin(0.5);
-    // A full-size Zone is the click target (a Container's own hit area is
-    // unreliable when nested — only the text area registered before).
-    const zone = this.add.zone(0, 0, w, h).setInteractive({ useHandCursor: true });
-    zone.on('pointerover', () => draw(true));
-    zone.on('pointerout', () => draw(false));
-    zone.on('pointerdown', onClick);
-    c.add([g, t, zone]);
-    return c;
+  ): Phaser.GameObjects.GameObject {
+    const bg = this.rex.add.roundRectangle(0, 0, w, h, 12, color).setStrokeStyle(3, 0xffffff, 0.6);
+    bg.setFillStyle(color, 0.85);
+    const btn = this.rex.add.label({
+      x, y, width: w, height: h,
+      background: bg,
+      text: this.add.text(0, 0, label, { fontFamily: 'monospace', fontSize: '22px', color: '#ffffff' }),
+      align: 'center',
+      space: { left: 12, right: 12, top: 10, bottom: 10 },
+    }).layout();
+    btn.setInteractive({ useHandCursor: true });
+    btn.on('pointerover', () => bg.setFillStyle(color, 1));
+    btn.on('pointerout', () => bg.setFillStyle(color, 0.85));
+    btn.on('pointerdown', onClick);
+    return btn;
   }
 
-  /**
-   * Draggable slider added to `parent`. get/set read/write the live value;
-   * fmt renders the label. Returns a refresh fn (re-reads value → repositions
-   * handle + relabels) so other sliders can update when a shared input changes.
-   */
+  /** rexUI Slider + a value label. Returns objects (for show/hide) + a refresh. */
   private makeSlider(
-    parent: Phaser.GameObjects.Container, x: number, y: number, w: number,
-    min: number, max: number, get: () => number, set: (v: number) => void, fmt: (v: number) => string,
-  ): () => void {
-    const trackG = this.add.graphics();
-    trackG.fillStyle(0x22324f, 1);
-    trackG.fillRoundedRect(x, y - 4, w, 8, 4);
-    const label = this.add.text(x, y - 26, '', {
+    x: number, y: number, w: number, min: number, max: number,
+    get: () => number, set: (v: number) => void, fmt: (v: number) => string,
+  ): { objects: Phaser.GameObjects.GameObject[]; refresh: () => void } {
+    const valText = this.add.text(x, y - 24, fmt(get()), {
       fontFamily: 'monospace', fontSize: '16px', color: '#cfe8ff',
     }).setOrigin(0, 0.5);
-    const handle = this.add.circle(x, y, 11, 0x00eaff).setStrokeStyle(2, 0xffffff);
-    const refresh = () => {
-      const t = Phaser.Math.Clamp((get() - min) / (max - min), 0, 1);
-      handle.x = x + t * w;
-      label.setText(fmt(get()));
-    };
-    handle.setInteractive({ draggable: true, useHandCursor: true });
-    handle.on('drag', (_p: Phaser.Input.Pointer, dragX: number) => {
-      const t = Phaser.Math.Clamp((dragX - x) / w, 0, 1);
-      set(min + t * (max - min));
-      this.refreshSettings();
-    });
-    parent.add([trackG, label, handle]);
-    refresh();
-    return refresh;
+    const slider = this.rex.add.slider({
+      x: x + w / 2, y, width: w, height: 10, orientation: 'x',
+      track: this.rex.add.roundRectangle(0, 0, w, 8, 4, 0x22324f),
+      thumb: this.rex.add.roundRectangle(0, 0, 24, 24, 12, 0x00eaff).setStrokeStyle(2, 0xffffff),
+      value: Phaser.Math.Clamp((get() - min) / (max - min), 0, 1),
+      valuechangeCallback: (v: number) => { set(min + v * (max - min)); this.refreshSettings(); },
+      space: { top: 4, bottom: 4 },
+    }).layout();
+    const refresh = () => valText.setText(fmt(get())); // only the label (peak depends on gravity)
+    return { objects: [valText, slider], refresh };
   }
 
   private refreshSettings(): void {
@@ -437,51 +430,49 @@ export class GameScene extends Phaser.Scene {
 
   private buildMenu(): void {
     const cx = GAME_WIDTH / 2, cy = GAME_HEIGHT / 2;
-    const c = this.add.container(0, 0).setDepth(12);
-    this.menuContainer = c;
     const title = this.add.text(cx, cy - 120, 'GEOMETRY RUSH', {
       fontFamily: 'monospace', fontSize: '48px', color: '#00eaff', stroke: '#003366', strokeThickness: 8,
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(12);
     const start = this.makeButton(cx, cy - 16, 240, 64, 'START', 0x00aa66, () => this.startRun());
-    const settings = this.makeButton(cx, cy + 70, 240, 50, 'SETTINGS', 0x444a6e,
-      () => this.settingsContainer?.setVisible(true));
-    c.add([title, start, settings]);
+    const settings = this.makeButton(cx, cy + 70, 240, 50, 'SETTINGS', 0x444a6e, () => this.openSettings());
+    (start as Phaser.GameObjects.Components.Depth).setDepth(12);
+    (settings as Phaser.GameObjects.Components.Depth).setDepth(12);
+    this.menuObjects = [title, start, settings];
   }
 
   private buildSettings(): void {
     const cx = GAME_WIDTH / 2, cy = GAME_HEIGHT / 2;
     const pw = 580, ph = 400;
-    const c = this.add.container(0, 0).setDepth(25).setVisible(false);
-    this.settingsContainer = c;
     const backdrop = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.6)
-      .setOrigin(0, 0).setInteractive(); // swallow clicks behind the panel
-    const pg = this.add.graphics();
-    pg.fillStyle(0x12203a, 0.98); pg.fillRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, 18);
-    pg.lineStyle(3, 0x00eaff, 0.8); pg.strokeRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, 18);
+      .setOrigin(0, 0).setInteractive().setDepth(24); // swallow clicks behind the panel
+    const panel = this.add.graphics().setDepth(25);
+    panel.fillStyle(0x12203a, 0.98); panel.fillRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, 18);
+    panel.lineStyle(3, 0x00eaff, 0.8); panel.strokeRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, 18);
     const title = this.add.text(cx, cy - ph / 2 + 30, 'SETTINGS', {
       fontFamily: 'monospace', fontSize: '28px', color: '#00eaff', stroke: '#000', strokeThickness: 4,
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(26);
     const hint = this.add.text(cx, cy - ph / 2 + 62, 'GD ref: 1x=11.4  2x=13.9  3x=15.7 blk/s', {
       fontFamily: 'monospace', fontSize: '13px', color: '#88aacc',
-    }).setOrigin(0.5);
-    c.add([backdrop, pg, title, hint]);
+    }).setOrigin(0.5).setDepth(26);
     const sx = cx - 180, sw = 360;
-    const r1 = this.makeSlider(c, sx, cy - 40, sw, 300, 800,
+    const s1 = this.makeSlider(sx, cy - 40, sw, 300, 800,
       () => this.scrollSpeed,
       (v) => { this.scrollSpeed = Math.round(v); this.registry.set('dbgSpeed', this.scrollSpeed); },
       (v) => `Speed:  ${Math.round(v)} px/s  (${(v / PLAYER_SIZE).toFixed(1)} blk/s)`);
-    const r2 = this.makeSlider(c, sx, cy + 30, sw, 350, 800,
+    const s2 = this.makeSlider(sx, cy + 30, sw, 350, 800,
       () => -this.jumpVel,
       (v) => { this.jumpVel = -Math.round(v); this.registry.set('dbgJump', this.jumpVel); },
       (v) => `Jump:  peak ${Math.round((v * v) / (2 * this.gravity))}px`);
-    const r3 = this.makeSlider(c, sx, cy + 100, sw, 1000, 3000,
+    const s3 = this.makeSlider(sx, cy + 100, sw, 1000, 3000,
       () => this.gravity,
       (v) => { this.gravity = Math.round(v); this.registry.set('dbgGrav', this.gravity); },
       (v) => `Fall speed (gravity):  ${Math.round(v)}`);
-    this.settingsRefreshers = [r1, r2, r3];
-    const back = this.makeButton(cx, cy + ph / 2 - 34, 150, 46, 'BACK', 0x2244aa,
-      () => c.setVisible(false));
-    c.add(back);
+    this.settingsRefreshers = [s1.refresh, s2.refresh, s3.refresh];
+    const back = this.makeButton(cx, cy + ph / 2 - 34, 150, 46, 'BACK', 0x2244aa, () => this.closeSettings());
+    const sliderObjs = [...s1.objects, ...s2.objects, ...s3.objects, back];
+    sliderObjs.forEach((o) => (o as Phaser.GameObjects.Components.Depth).setDepth(26));
+    this.settingsObjects = [backdrop, panel, title, hint, ...sliderObjs];
+    this.closeSettings();
   }
 
   private handleJump(): void {
