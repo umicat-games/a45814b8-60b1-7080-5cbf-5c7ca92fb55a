@@ -34,8 +34,8 @@
 - **SPACE / W / UP arrow / tap** — jump (hold not needed; single tap per jump)
 
 ## This Turn
-- Fixed collision: checkCollision's vertical test was `py < hb.y` (only fired
-  when the player straddled an obstacle's TOP edge) — corrected to
-  `py < hb.y + hb.h` so it's a proper AABB overlap against the full hitbox
-  height. Before, the player passed through the lower part of spikes/blocks.
+- Fixed start-jump: handleJump fell through to the jump after setting
+  `started=true`, so the SPACE/tap that starts the run also jumped. Added a
+  `return` after the start block — the first press only begins the run.
+- (prev) Fixed collision: `py < hb.y` → `py < hb.y + hb.h` (proper AABB).
 - (prev) Set SCROLL_SPEED to 480 px/s (1.5x the original 320)

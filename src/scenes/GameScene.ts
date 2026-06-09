@@ -366,6 +366,7 @@ export class GameScene extends Phaser.Scene {
       this.children.list
         .filter(c => c instanceof Phaser.GameObjects.Text && (c as Phaser.GameObjects.Text).text === 'GEOMETRY RUSH')
         .forEach(c => c.destroy());
+      return; // the start press only begins the run — don't also jump
     }
 
     if (this.dead) {
