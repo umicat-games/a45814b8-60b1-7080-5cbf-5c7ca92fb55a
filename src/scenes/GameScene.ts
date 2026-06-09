@@ -389,13 +389,13 @@ export class GameScene extends Phaser.Scene {
     const t = this.add.text(0, 0, label, {
       fontFamily: 'monospace', fontSize: '22px', color: '#ffffff', stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5);
-    c.add([g, t]);
-    c.setSize(w, h);
-    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
-    if (c.input) c.input.cursor = 'pointer';
-    c.on('pointerover', () => draw(true));
-    c.on('pointerout', () => draw(false));
-    c.on('pointerdown', onClick);
+    // A full-size Zone is the click target (a Container's own hit area is
+    // unreliable when nested — only the text area registered before).
+    const zone = this.add.zone(0, 0, w, h).setInteractive({ useHandCursor: true });
+    zone.on('pointerover', () => draw(true));
+    zone.on('pointerout', () => draw(false));
+    zone.on('pointerdown', onClick);
+    c.add([g, t, zone]);
     return c;
   }
 
