@@ -1,0 +1,78 @@
+// Canonical example of a standalone tilemap resource file (ADR-008,
+// tilemap-as-resource). Real files are plain JSON (no comments) named
+// `public/tilemaps/{id}.json` — e.g. this example would live at
+// `public/tilemaps/forest-floor.json`. This `.json.txt` copy exists only
+// as documentation; it is never loaded.
+//
+// How it is used:
+//   1. A world scene references it with a `tilemap-ref` entity that holds
+//      ONLY the reference + placement:
+//
+//        { "id": "e-ground", "kind": "tilemap-ref",
+//          "tilemapId": "forest-floor", "role": "terrain",
+//          "transform": { "x": 640, "y": 360, "depth": 1 } }
+//
+//   2. The SDK's SceneLoader fetches `tilemaps/forest-floor.json` at scene
+//      load and renders it through the same path embedded tilemaps used.
+//   3. Humans edit the file in Tilemap Studio (which sets
+//      `humanCurated: true`); the agent edits the JSON directly — but must
+//      NOT overwrite cell data in a humanCurated file without asking.
+//
+// Field notes:
+//   - schemaVersion: always 1 for now.
+//   - id: must match the filename stem; scenes reference it as `tilemapId`.
+//   - tileSize: render-time cell size in PIXELS.
+//   - size: map size in CELLS (this example is 8x6 cells = 256x192 px).
+//   - layers[].tilesetIds: manifest asset ids (the tileset PNGs); the
+//     runtime consumes the first id per layer today.
+//   - layers[].data: row-major 2D array, `size.height` rows of
+//     `size.width` cells; each cell is a 0-based tile index into the
+//     tileset, or null for empty.
+//   - layers[].z: render order within the tilemap (ascending).
+//   - layers[].autotile: optional `{ "terrainId": "..." }` when the layer
+//     is painted with a Wang terrain defined on the tileset asset.
+{
+  "schemaVersion": 1,
+  "id": "forest-floor",
+  "name": "Forest Floor",
+  "tileSize": { "width": 32, "height": 32 },
+  "size": { "width": 8, "height": 6 },
+  "humanCurated": false,
+  "metadata": {
+    "createdAt": "2026-06-12T00:00:00.000Z",
+    "editedAt": "2026-06-12T00:00:00.000Z",
+    "author": "agent"
+  },
+  "layers": [
+    {
+      "id": "ground",
+      "name": "Ground",
+      "tilesetIds": ["forest-tileset"],
+      "z": 0,
+      "visible": true,
+      "data": [
+        [0, 1, 1, 1, 1, 1, 1, 2],
+        [8, 9, 9, 9, 9, 9, 9, 10],
+        [8, 9, 9, 9, 9, 9, 9, 10],
+        [8, 9, 9, 9, 9, 9, 9, 10],
+        [8, 9, 9, 9, 9, 9, 9, 10],
+        [16, 17, 17, 17, 17, 17, 17, 18]
+      ]
+    },
+    {
+      "id": "decor",
+      "name": "Decor",
+      "tilesetIds": ["forest-tileset"],
+      "z": 1,
+      "visible": true,
+      "data": [
+        [null, null, null, null, null, null, null, null],
+        [null, 24, null, null, null, null, 25, null],
+        [null, null, null, 26, null, null, null, null],
+        [null, null, null, null, null, null, null, null],
+        [null, 24, null, null, null, 26, null, null],
+        [null, null, null, null, null, null, null, null]
+      ]
+    }
+  ]
+}
