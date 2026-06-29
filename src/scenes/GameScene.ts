@@ -4,13 +4,13 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 const GROUND_Y = GAME_HEIGHT - 80;
 const PLAYER_SIZE = 38;
 const SCROLL_SPEED = 540; // px/s
-const JUMP_VEL = -550;    // lower jump (~98px peak ≈ 2.6 player heights) — more Geometry-Dash-like
-const GRAVITY = 1550;     // snappier arc; horizontal jump distance kept ~383px so obstacles still clear
+const JUMP_VEL = -680;    // higher jump (~110px peak ≈ 2.9 player heights)
+const GRAVITY = 2100;     // steeper arc; horizontal jump distance reduced to ~350px
 const SPIKE_W = 40;
 const SPIKE_H = 40;
 
-// Jump physics (defaults): peak ≈ 97px, airtime ≈ 0.71s, horizontal reach ≈ 383px.
-// The level below is hand-authored for these numbers so every challenge clears.
+// Jump physics (defaults): peak ≈ 110px, airtime ≈ 0.65s, horizontal reach ≈ 350px.
+// The level below has been rescaled for these numbers.
 
 type Rect = { x: number; y: number; w: number; h: number };
 
@@ -27,18 +27,18 @@ interface Obstacle {
 // jump clears 40px-tall spikes over a ~294px window). 'b'/'P' are platforms:
 // jump ONTO them (or over) — running into the side is fatal, the top is safe.
 const LEVEL: { k: string; adv: number }[] = [
-  { k: 's', adv: 470 }, // single spike
-  { k: 's', adv: 480 },
-  { k: 'd', adv: 540 }, // double spike (one jump)
-  { k: 's', adv: 470 },
-  { k: 'b', adv: 520 }, // 50px block — jump onto or over
-  { k: 's', adv: 460 },
-  { k: 't', adv: 590 }, // triple spike (one jump)
-  { k: 's', adv: 480 },
-  { k: 'P', adv: 660 }, // wide low platform — land, ride, drop off the left
-  { k: 's', adv: 480 },
-  { k: 'd', adv: 560 },
-  { k: 'b', adv: 520 },
+  { k: 's', adv: 425 }, // single spike
+  { k: 's', adv: 435 },
+  { k: 'd', adv: 495 }, // double spike (one jump)
+  { k: 's', adv: 425 },
+  { k: 'b', adv: 475 }, // 50px block — jump onto or over
+  { k: 's', adv: 420 },
+  { k: 't', adv: 540 }, // triple spike (one jump)
+  { k: 's', adv: 435 },
+  { k: 'P', adv: 600 }, // wide low platform — land, ride, drop off the left
+  { k: 's', adv: 435 },
+  { k: 'd', adv: 510 },
+  { k: 'b', adv: 475 },
 ];
 
 export class GameScene extends Phaser.Scene {
