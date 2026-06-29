@@ -17,7 +17,7 @@
 - Distance score (meters = worldX / 100)
 - Best distance persisted in localStorage (key: `gd_best`)
 - Title screen with "PRESS SPACE OR TAP TO START" prompt
-- "YOU CRASHED!" overlay with distance/best and retry prompt
+- "YOU CRASHED!" overlay with distance/best and auto-retry (restarts after 2 seconds)
 - Neon GD-style loading bar in BootScene
 
 ## Key Implementation Details
@@ -34,6 +34,7 @@
 - **SPACE / W / UP arrow / tap** — jump (hold not needed; single tap per jump)
 
 ## This Turn (Latest)
+- **Added auto-retry** — game now restarts automatically 2 seconds after death, showing the crash overlay with distance/best. Death overlay text updated to "[ Restarting... ]" instead of prompt to press SPACE.
 - **Reduced jump horizontal distance even further** — from 320px to 290px by increasing GRAVITY to 3050 (was 2500) and JUMP_VEL to -820 (was -740). Arc is now extremely steep but maintains ~110px peak height. Rescaled LEVEL spacings by 0.906 ratio to keep proper difficulty pacing.
 
 ## Previous Turns

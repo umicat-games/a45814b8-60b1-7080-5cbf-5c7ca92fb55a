@@ -8,6 +8,7 @@ const JUMP_VEL = -820;    // higher jump (~110px peak ≈ 2.9 player heights)
 const GRAVITY = 3050;     // extremely steep arc; horizontal jump distance reduced to ~290px
 const SPIKE_W = 40;
 const SPIKE_H = 40;
+const AUTO_RETRY_DELAY = 2000; // ms before auto-restarting after death
 
 // Jump physics (defaults): peak ≈ 110px, airtime ≈ 0.54s, horizontal reach ≈ 290px.
 // The level below has been rescaled for these numbers.
@@ -49,6 +50,7 @@ export class GameScene extends Phaser.Scene {
   private onGround = false;
   private dead = false;
   private started = false;
+  private deathTime = 0; // tracks when player died for auto-retry
 
   private worldX = 0; // how far world has scrolled
   private nextObstacleX = 900;
@@ -158,7 +160,7 @@ export class GameScene extends Phaser.Scene {
     const dSub = this.add.text(0, 10, '', {
       fontFamily: 'monospace', fontSize: '20px', color: '#ffffff', stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5).setName('sub');
-    const dRestart = this.add.text(0, 60, '[ SPACE / TAP to retry ]', {
+    const dRestart = this.add.text(0, 60, '[ Restarting... ]', {
       fontFamily: 'monospace', fontSize: '16px', color: '#aaffaa', stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5);
     this.deathOverlay.add([panel, dTitle, dSub, dRestart]);
@@ -573,6 +575,7 @@ export class GameScene extends Phaser.Scene {
 
   private killPlayer(): void {
     this.dead = true;
+    this.deathTime = Date.now();
 
     // Explosion particles
     for (let i = 0; i < 18; i++) {
@@ -625,6 +628,10 @@ export class GameScene extends Phaser.Scene {
       if (this.dead) {
         this.updateParticles(dt);
         this.drawParticles();
+        // Auto-retry after delay
+        if (Date.now() - this.deathTime > AUTO_RETRY_DELAY) {
+          this.restartGame();
+        }
       }
       return;
     }
