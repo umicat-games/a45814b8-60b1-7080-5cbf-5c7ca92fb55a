@@ -28,13 +28,13 @@
 - All rendering via Phaser Graphics API cleared + redrawn each frame
 - Obstacle system: worldX-based positions, screen positions computed as `obs.x - this.worldX`
 - Obstacle spawning: batches of 6 patterns, re-triggered when next batch is < GAME_WIDTH+200px ahead
-- Constants: SCROLL_SPEED=540, JUMP_VEL=-740, GRAVITY=2500, PLAYER_SIZE=38, GROUND_Y=GAME_HEIGHT-80
+- Constants: SCROLL_SPEED=540, JUMP_VEL=-820, GRAVITY=3050, PLAYER_SIZE=38, GROUND_Y=GAME_HEIGHT-80
 
 ## Controls
 - **SPACE / W / UP arrow / tap** — jump (hold not needed; single tap per jump)
 
 ## This Turn (Latest)
-- **Reduced jump horizontal distance further** — from 350px to 320px by increasing GRAVITY to 2500 (was 2100) and JUMP_VEL to -740 (was -680). Arc is now much steeper but maintains ~110px peak height. Rescaled LEVEL spacings by 0.914 ratio to keep proper difficulty pacing.
+- **Reduced jump horizontal distance even further** — from 320px to 290px by increasing GRAVITY to 3050 (was 2500) and JUMP_VEL to -820 (was -740). Arc is now extremely steep but maintains ~110px peak height. Rescaled LEVEL spacings by 0.906 ratio to keep proper difficulty pacing.
 
 ## Previous Turns
 - **Increased jump height, reduced horizontal distance** — Changed JUMP_VEL to -680 and GRAVITY to 2100 to get higher peak (~110px vs 97px) but shorter reach (~350px vs 383px). Rescaled all LEVEL spacings proportionally.
