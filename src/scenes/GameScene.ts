@@ -4,12 +4,12 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 const GROUND_Y = GAME_HEIGHT - 80;
 const PLAYER_SIZE = 38;
 const SCROLL_SPEED = 540; // px/s
-const JUMP_VEL = -680;    // higher jump (~110px peak ≈ 2.9 player heights)
-const GRAVITY = 2100;     // steeper arc; horizontal jump distance reduced to ~350px
+const JUMP_VEL = -740;    // higher jump (~110px peak ≈ 2.9 player heights)
+const GRAVITY = 2500;     // very steep arc; horizontal jump distance reduced to ~320px
 const SPIKE_W = 40;
 const SPIKE_H = 40;
 
-// Jump physics (defaults): peak ≈ 110px, airtime ≈ 0.65s, horizontal reach ≈ 350px.
+// Jump physics (defaults): peak ≈ 110px, airtime ≈ 0.59s, horizontal reach ≈ 320px.
 // The level below has been rescaled for these numbers.
 
 type Rect = { x: number; y: number; w: number; h: number };
@@ -27,18 +27,18 @@ interface Obstacle {
 // jump clears 40px-tall spikes over a ~294px window). 'b'/'P' are platforms:
 // jump ONTO them (or over) — running into the side is fatal, the top is safe.
 const LEVEL: { k: string; adv: number }[] = [
-  { k: 's', adv: 425 }, // single spike
-  { k: 's', adv: 435 },
-  { k: 'd', adv: 495 }, // double spike (one jump)
-  { k: 's', adv: 425 },
-  { k: 'b', adv: 475 }, // 50px block — jump onto or over
-  { k: 's', adv: 420 },
-  { k: 't', adv: 540 }, // triple spike (one jump)
-  { k: 's', adv: 435 },
-  { k: 'P', adv: 600 }, // wide low platform — land, ride, drop off the left
-  { k: 's', adv: 435 },
-  { k: 'd', adv: 510 },
-  { k: 'b', adv: 475 },
+  { k: 's', adv: 390 }, // single spike
+  { k: 's', adv: 400 },
+  { k: 'd', adv: 450 }, // double spike (one jump)
+  { k: 's', adv: 390 },
+  { k: 'b', adv: 435 }, // 50px block — jump onto or over
+  { k: 's', adv: 385 },
+  { k: 't', adv: 490 }, // triple spike (one jump)
+  { k: 's', adv: 400 },
+  { k: 'P', adv: 545 }, // wide low platform — land, ride, drop off the left
+  { k: 's', adv: 400 },
+  { k: 'd', adv: 465 },
+  { k: 'b', adv: 435 },
 ];
 
 export class GameScene extends Phaser.Scene {
